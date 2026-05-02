@@ -1,0 +1,23 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.11, pytest-8.3.4, pluggy-1.6.0 -- E:\Codecademy\Cognitive-Cache\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: e:\Codecademy\Cognitive-Cache\backend
+configfile: pyproject.toml
+plugins: anyio-4.13.0, langsmith-0.8.0, asyncio-0.25.3
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=function
+collecting ... collected 12 items
+
+backend\tests\test_ollama.py::TestOllamaClient::test_initialization PASSED [  8%]
+backend\tests\test_ollama.py::TestOllamaClient::test_get_status_not_initialized PASSED [ 16%]
+backend\tests\test_ollama.py::TestOllamaClient::test_check_server_health_success PASSED [ 25%]
+backend\tests\test_ollama.py::TestOllamaClient::test_check_server_health_failure PASSED [ 33%]
+backend\tests\test_ollama.py::TestOllamaClient::test_model_exists_true PASSED [ 41%]
+backend\tests\test_ollama.py::TestOllamaClient::test_model_exists_false PASSED [ 50%]
+backend\tests\test_ollama.py::TestOllamaClient::test_initialize_success PASSED [ 58%]
+backend\tests\test_ollama.py::TestOllamaClient::test_initialize_server_not_running PASSED [ 66%]
+backend\tests\test_ollama.py::TestRAGPipeline::test_pipeline_query PASSED [ 75%]
+backend\tests\test_ollama.py::TestRAGPipeline::test_pipeline_query_hyde PASSED [ 83%]
+backend\tests\test_ollama.py::TestRAGPipeline::test_pipeline_unhealthy_chromadb PASSED [ 91%]
+backend\tests\test_ollama.py::TestRAGPipeline::test_pipeline_unhealthy_ollama PASSED [100%]
+
+============================= 12 passed in 0.84s ==============================
