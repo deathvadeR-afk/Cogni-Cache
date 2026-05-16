@@ -1,0 +1,48 @@
+{
+    "manifest_version": 3,
+    "name": "Cognitive Cache",
+    "version": "1.0.0",
+    "description": "Browser extension for RAG-powered knowledge management",
+    "permissions": [
+        "sidePanel",
+        "activeTab",
+        "contextMenus",
+        "storage"
+    ],
+    "host_permissions": [
+        "<all_urls>"
+    ],
+    "action": {
+        "default_title": "Cognitive Cache"
+    },
+    "side_panel": {
+        "default_path": "sidepanel.html"
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "32": "icons/icon32.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ]
+        }
+    ],
+    "commands": {
+        "save-context": {
+            "suggested_key": {
+                "default": "Ctrl+Shift+S"
+            },
+            "description": "Save current page to Cognitive Cache"
+        }
+    },
+    "content_security_policy": {
+        "extension_pages": "script-src 'self' 'unsafe-inline' https://unpkg.com; object-src 'self'"
+    }
+}

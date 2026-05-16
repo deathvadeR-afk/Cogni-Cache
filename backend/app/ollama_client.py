@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 # Default Ollama settings
 OLLAMA_BASE_URL = "http://localhost:11434"
-DEFAULT_MODEL = "phi3.5:mini"
+DEFAULT_MODEL = "phi3.5:latest"
 
 
 class OllamaClient:

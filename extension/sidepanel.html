@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cognitive Cache</title>
+    <link rel="stylesheet" href="sidepanel.css">
+</head>
+
+<body>
+    <div id="welcome-screen" class="screen">
+        <div class="welcome-content">
+            <h1>Cognitive Cache</h1>
+            <p>Welcome! To get started, please start the backend server.</p>
+            <button id="start-backend-btn" class="btn-primary">Start Backend</button>
+        </div>
+    </div>
+
+    <div id="main-screen" class="screen hidden">
+        <main>
+            <section class="ingest-section">
+                <h2>Save Context</h2>
+                <button id="save-context-btn" class="btn-primary" disabled>Save Current Page</button>
+                <div id="ingest-status" class="status"></div>
+            </section>
+
+            <section class="chat-section">
+                <div id="chat-container">
+                    <div id="chat-messages"></div>
+                    <div id="backend-error" class="backend-error hidden">
+                        <svg class="error-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#dc3545"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <div id="error-tooltip" class="error-tooltip">Backend offline</div>
+                    </div>
+                    <form id="chat-form">
+                        <div class="input-container">
+                            <textarea id="chat-input" placeholder="Ask about your knowledge base..." rows="1"
+                                maxlength="500"></textarea>
+                            <button type="submit" id="send-btn" class="send-btn" title="Send">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                    <button id="clear-history-btn" class="clear-history-btn">Clear History</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="https://unpkg.com/@mozilla/readability/Readability.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="sidepanel.js"></script>
+</body>
+
+</html>

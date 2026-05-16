@@ -9,7 +9,7 @@ Set up Ollama with Phi-3.5-mini model, auto-pull on startup if missing, and conf
 ## Acceptance criteria
 
 - [x] Ollama integration via FastAPI dependency injection
-- [x] Phi-3.5-mini model auto-pull on backend startup if missing
+- [x] Phi-3.5 model auto-pull on backend startup if missing
 - [x] LangGraph orchestration framework configured for RAG workflow
 - [x] Basic RAG pipeline routing (query → retrieve → generate) set up with mocked ChromaDB retriever (real connection validated in Issue #6)
 - [x] Unit tests cover LangGraph node logic in isolation (ChromaDB dependency mocked)
@@ -22,4 +22,4 @@ None - can start immediately
 
 ## Status
 
-[x] COMPLETED - All acceptance criteria met. Ollama Phi-3.5-mini integration with auto-pull, LangGraph orchestration configured, RAG pipeline with mocked ChromaDB retriever implemented, and 12 unit tests passing.
+[x] COMPLETED - All acceptance criteria met. Ollama Phi-3.5 integration with auto-pull, LangGraph orchestration configured, RAG pipeline with mocked ChromaDB retriever implemented, and 12 unit tests passing.

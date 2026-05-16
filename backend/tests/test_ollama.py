@@ -13,7 +13,7 @@ class TestOllamaClient:
         """Test OllamaClient initialization."""
         client = OllamaClient()
         assert client.base_url == "http://localhost:11434"
-        assert client.model == "phi3.5:mini"
+        assert client.model == "phi3.5:latest"
         assert client.status == "not_initialized"
 
     def test_get_status_not_initialized(self):
@@ -21,7 +21,7 @@ class TestOllamaClient:
         client = OllamaClient()
         status = client.get_status()
         assert status["status"] == "not_initialized"
-        assert status["model"] == "phi3.5:mini"
+        assert status["model"] == "phi3.5:latest"
 
     @patch('app.ollama_client.requests.Session')
     def test_check_server_health_success(self, mock_session):
@@ -50,14 +50,14 @@ class TestOllamaClient:
         mock_response.status_code = 200
         mock_response.json.return_value = {
             "models": [
-                {"name": "phi3.5:mini"},
+                {"name": "phi3.5:latest"},
                 {"name": "llama2:latest"}
             ]
         }
         mock_session.return_value.get.return_value = mock_response
 
         client = OllamaClient()
-        result = client._model_exists("phi3.5:mini")
+        result = client._model_exists("phi3.5:latest")
         assert result is True
 
     @patch('app.ollama_client.requests.Session')
@@ -73,7 +73,7 @@ class TestOllamaClient:
         mock_session.return_value.get.return_value = mock_response
 
         client = OllamaClient()
-        result = client._model_exists("phi3.5:mini")
+        result = client._model_exists("phi3.5:latest")
         assert result is False
 
     @patch('app.ollama_client.subprocess.run')
