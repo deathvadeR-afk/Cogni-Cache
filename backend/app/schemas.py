@@ -69,3 +69,29 @@ class SourceMetadata(BaseModel):
 class SourcesResponse(BaseModel):
     """Response schema for sources endpoint."""
     sources: List[SourceMetadata] = Field(default_factory=list)
+
+
+class Citation(BaseModel):
+    """Citation for a source used in the response."""
+    url: str = Field(..., example="https://example.com/article")
+    title: Optional[str] = Field(None, example="Article Title")
+
+
+class QueryRequest(BaseModel):
+    """Request schema for query endpoint."""
+    query: str = Field(..., example="What is the capital of France?")
+    conversation_id: Optional[str] = Field(None, example="123e4567-e89b-12d3-a456-426614174000")
+    history: Optional[List[Dict[str, str]]] = Field(
+        None,
+        example=[
+            {"role": "user", "content": "What is France known for?"},
+            {"role": "assistant", "content": "France is known for..."}
+        ]
+    )
+
+
+class QueryResponse(BaseModel):
+    """Response schema for query endpoint."""
+    response: str = Field(..., example="The capital of France is Paris.")
+    citations: List[Citation] = Field(default_factory=list)
+    conversation_id: Optional[str] = Field(None, example="123e4567-e89b-12d3-a456-426614174000")

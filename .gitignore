@@ -1,0 +1,12 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Databases and runtime data
+*.sqlite3
+backend/test_chroma_db*/
+backend/chroma_db/
+
+# Logs
+backend/logs/
+*.log

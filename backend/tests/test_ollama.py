@@ -109,7 +109,7 @@ class TestRAGPipeline:
         mock_chromadb = MagicMock()
         mock_chromadb.status = "healthy"
         mock_chromadb.similarity_search.return_value = [
-            Document(page_content="Test document content")
+            Document(page_content="Test document content", metadata={"url": "https://example.com"})
         ]
 
         mock_ollama = MagicMock()
@@ -117,9 +117,10 @@ class TestRAGPipeline:
         mock_ollama.generate.return_value = "Test response"
 
         pipeline = RAGPipeline(mock_chromadb, mock_ollama)
-        response = pipeline.query("Test query")
+        result = pipeline.query("Test query")
 
-        assert response == "Test response"
+        assert result["response"] == "Test response"
+        assert "citations" in result
         mock_chromadb.similarity_search.assert_called_once()
         mock_ollama.generate.assert_called_once()
 

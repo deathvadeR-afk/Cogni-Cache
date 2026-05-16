@@ -8,13 +8,13 @@ Implement POST /api/v1/query endpoint with streaming responses, multi-turn conve
 
 ## Acceptance criteria
 
-- [ ] POST /api/v1/query returns streaming response
-- [ ] Multi-turn conversation history supported via LangGraph
-- [ ] Full response includes inline citations (page titles for web, video titles for YouTube)
-- [ ] Citations are clickable URLs
-- [ ] Endpoint uses dependency injection for ChromaDB, Ollama, LangGraph
-- [ ] Pydantic request/response models defined
-- [ ] pytest tests for /api/v1/query endpoint
+- [x] POST /api/v1/query returns streaming response
+- [x] Multi-turn conversation history supported via LangGraph
+- [x] Full response includes inline citations (page titles for web, video titles for YouTube)
+- [x] Citations are clickable URLs
+- [x] Endpoint uses dependency injection for ChromaDB, Ollama, LangGraph
+- [x] Pydantic request/response models defined
+- [x] pytest tests for /api/v1/query endpoint
 
 ## Blocked by
 

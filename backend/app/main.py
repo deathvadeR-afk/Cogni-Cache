@@ -8,14 +8,15 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from app.middleware.timeout import TimeoutMiddleware
 from app.dependencies import get_db_client, get_ollama_client_dep
-from app.schemas import HealthResponse, ErrorResponse, IngestRequest, IngestResponse, TaskResponse, SourcesResponse
+from app.schemas import HealthResponse, ErrorResponse, IngestRequest, IngestResponse, TaskResponse, SourcesResponse, QueryRequest, QueryResponse
 from app.task_storage import TaskStorage
 from app.ingest_tasks import process_ingest_task
+from app.rag_pipeline import RAGPipeline
 
 # Configure logging
 logging.basicConfig(
@@ -54,6 +55,18 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Failed to initialize Ollama: {e}")
         app.state.ollama_client = None
+    
+    # Initialize RAG pipeline
+    try:
+        if app.state.chromadb_client and app.state.ollama_client:
+            app.state.rag_pipeline = RAGPipeline(
+                app.state.chromadb_client,
+                app.state.ollama_client
+            )
+            logger.info("RAG pipeline initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize RAG pipeline: {e}")
+        app.state.rag_pipeline = None
     
     # Initialize APScheduler for daily cleanup
     scheduler = BackgroundScheduler()
@@ -235,6 +248,40 @@ async def get_sources(
     """Get all ingested sources with metadata."""
     sources = chromadb_client.get_sources()
     return SourcesResponse(sources=sources)
+
+# Query endpoint
+@app.post("/api/v1/query")
+@limiter.limit("10/minute")
+async def query(
+    request: Request,
+    query_request: QueryRequest,
+):
+    """
+    Query the RAG system with streaming response.
+    
+    Supports multi-turn conversation history and returns inline citations.
+    """
+    rag_pipeline: RAGPipeline = request.app.state.rag_pipeline
+    
+    if not rag_pipeline:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail="RAG pipeline not initialized")
+    
+    # Generate conversation_id if not provided
+    conversation_id = query_request.conversation_id or str(uuid.uuid4())
+    
+    # Run the query
+    result = rag_pipeline.query(
+        query=query_request.query,
+        filter=None,
+        history=query_request.history
+    )
+    
+    return QueryResponse(
+        response=result["response"],
+        citations=result["citations"],
+        conversation_id=conversation_id
+    )
 
 # Custom exception handlers
 @app.exception_handler(Exception)
