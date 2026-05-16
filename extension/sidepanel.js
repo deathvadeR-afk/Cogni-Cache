@@ -1,5 +1,5 @@
 // Cognitive Cache Side Panel - Vanilla JS
-// No frameworks, system fonts, pure CSS
+// Cerebral Glass Design
 
 const API_BASE = 'http://localhost:8000/api/v1';
 const MAX_CHAT_HISTORY = 100;
@@ -17,7 +17,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.getElementById('send-btn');
     const clearHistoryBtn = document.getElementById('clear-history-btn');
     const backendError = document.getElementById('backend-error');
-    const errorTooltip = document.getElementById('error-tooltip');
+    const dismissErrorBtn = document.getElementById('dismiss-error-btn');
+    const sourceCountBadge = document.getElementById('source-count');
+    const emptyState = document.getElementById('empty-state');
 
     let isBackendReachable = true;
 
@@ -30,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
             checkPageType();
             loadChatHistory();
             checkBackendHealth();
+            updateSourceCount();
         }
     });
 
@@ -40,14 +43,19 @@ document.addEventListener('DOMContentLoaded', () => {
             checkPageType();
             loadChatHistory();
             checkBackendHealth();
+            updateSourceCount();
         });
+    });
+
+    // Dismiss error button
+    dismissErrorBtn.addEventListener('click', () => {
+        hideBackendError();
     });
 
     // Save context button
     saveContextBtn.addEventListener('click', async () => {
         saveContextBtn.disabled = true;
-        ingestStatus.textContent = 'Processing...';
-        ingestStatus.className = 'status loading';
+        showStatus('Processing...', 'loading');
 
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -57,8 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await chrome.tabs.sendMessage(tab.id, { action: 'saveContext' });
 
                 if (response && response.success) {
-                    ingestStatus.textContent = 'Saved successfully!';
-                    ingestStatus.className = 'status success';
+                    showStatus('Saved successfully!', 'success');
                     updateSourceCount();
                 } else {
                     throw new Error(response?.error || 'Save failed');
@@ -77,16 +84,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (response.ok) {
                     const data = await response.json();
-                    ingestStatus.textContent = 'Saved successfully!';
-                    ingestStatus.className = 'status success';
+                    showStatus('Saved successfully!', 'success');
                     updateSourceCount();
                 } else {
                     throw new Error('Save failed');
                 }
             }
         } catch (error) {
-            ingestStatus.textContent = 'Error: ' + error.message;
-            ingestStatus.className = 'status error';
+            showStatus('Error: ' + error.message, 'error');
         }
 
         saveContextBtn.disabled = false;
@@ -98,6 +103,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const message = chatInput.value.trim();
         if (!message) return;
+
+        // Hide empty state
+        if (emptyState) emptyState.style.display = 'none';
 
         // Add user message
         addMessage('user', message);
@@ -151,6 +159,9 @@ document.addEventListener('DOMContentLoaded', () => {
     clearHistoryBtn.addEventListener('click', () => {
         chrome.storage.local.set({ chatHistory: [] }, () => {
             chatMessages.innerHTML = '';
+            if (emptyState) {
+                emptyState.style.display = 'flex';
+            }
         });
     });
 
@@ -166,11 +177,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (response && (response.isArticle || response.isYouTube)) {
                     saveContextBtn.disabled = false;
-                    saveContextBtn.textContent = response.isYouTube ? 'Save YouTube Video' : 'Save Article';
+                    document.getElementById('save-btn-text').textContent = response.isYouTube ? 'Save YouTube Video' : 'Save Article';
                 } else {
                     // Enable save button for all pages (will save as web page)
                     saveContextBtn.disabled = false;
-                    saveContextBtn.textContent = 'Save Current Page';
+                    document.getElementById('save-btn-text').textContent = 'Save Current Page';
                 }
                 return; // Success, exit the function
             } catch (error) {
@@ -179,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     console.error('checkPageType: failed after', maxAttempts, 'attempts:', error);
                     // Enable save button even on error (will save as web page)
                     saveContextBtn.disabled = false;
-                    saveContextBtn.textContent = 'Save Current Page';
+                    document.getElementById('save-btn-text').textContent = 'Save Current Page';
                 } else {
                     // Wait before retrying
                     await new Promise(resolve => setTimeout(resolve, 500));
@@ -194,14 +205,28 @@ document.addEventListener('DOMContentLoaded', () => {
             const response = await fetch(`${API_BASE}/sources`);
             if (response.ok) {
                 const data = await response.json();
+                const count = data.sources?.length || 0;
+                sourceCountBadge.textContent = count;
                 chrome.runtime.sendMessage({
                     action: 'updateBadge',
-                    count: data.sources?.length || 0
+                    count: count
                 });
             }
         } catch (error) {
             console.error('Failed to update source count:', error);
         }
+    }
+
+    // Show status toast
+    function showStatus(message, type) {
+        ingestStatus.textContent = message;
+        ingestStatus.className = `status-toast ${type}`;
+        ingestStatus.classList.remove('hidden');
+
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            ingestStatus.classList.add('hidden');
+        }, 3000);
     }
 
     // Add message to chat
@@ -246,6 +271,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function loadChatHistory() {
         chrome.storage.local.get(['chatHistory'], (result) => {
             const history = result.chatHistory || [];
+            if (history.length > 0 && emptyState) {
+                emptyState.style.display = 'none';
+            }
             history.forEach(item => {
                 addMessage('user', item.question);
                 addMessage('assistant', item.answer);

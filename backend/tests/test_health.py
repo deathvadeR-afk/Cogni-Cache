@@ -1,6 +1,13 @@
 import pytest
 from fastapi.testclient import TestClient
+from unittest.mock import MagicMock
 from app.main import app
+
+# Mock the clients before creating the test client
+app.state.chromadb_client = MagicMock()
+app.state.chromadb_client.get_status.return_value = {"status": "healthy"}
+app.state.ollama_client = MagicMock()
+app.state.ollama_client.get_status.return_value = {"status": "healthy", "model": "test-model"}
 
 client = TestClient(app)
 

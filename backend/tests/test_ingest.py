@@ -156,10 +156,16 @@ def test_extract_video_id_from_url():
 @patch("app.youtube_transcript.YouTubeTranscriptApi")
 def test_fetch_transcript_success(mock_api):
     """Test successful transcript fetch."""
-    mock_api.get_transcript.return_value = [
-        {"text": "Hello", "start": 0, "duration": 1},
-        {"text": "World", "start": 1, "duration": 1}
-    ]
+    # Create a mock FetchedTranscript with snippet objects
+    mock_snippet1 = MagicMock()
+    mock_snippet1.text = "Hello"
+    mock_snippet2 = MagicMock()
+    mock_snippet2.text = "World"
+    
+    mock_fetched = MagicMock()
+    mock_fetched.__iter__ = lambda self: iter([mock_snippet1, mock_snippet2])
+    
+    mock_api.return_value.fetch.return_value = mock_fetched
     
     result = fetch_youtube_transcript("dQw4w9WgXcQ")
     assert result == "Hello World"
@@ -168,7 +174,7 @@ def test_fetch_transcript_success(mock_api):
 @patch("app.youtube_transcript.YouTubeTranscriptApi")
 def test_fetch_transcript_failure(mock_api):
     """Test transcript fetch failure."""
-    mock_api.get_transcript.side_effect = Exception("Video unavailable")
+    mock_api.return_value.fetch.side_effect = Exception("Video unavailable")
     
     # Use a valid video ID format so it passes validation
     with pytest.raises(ValueError, match="Could not fetch transcript"):

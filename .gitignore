@@ -1,12 +1,29 @@
 # Python cache
 __pycache__/
 *.pyc
+.pytest_cache/
+
+# Virtual environment
+.venv/
+venv/
 
 # Databases and runtime data
 *.sqlite3
+test_chroma_db*/
+chroma_db/
 backend/test_chroma_db*/
 backend/chroma_db/
 
+# Task storage
+tasks/
+backend/tasks/
+
 # Logs
 backend/logs/
+logs/
 *.log
+
+# Test output
+test_output.txt
+
+Docs
