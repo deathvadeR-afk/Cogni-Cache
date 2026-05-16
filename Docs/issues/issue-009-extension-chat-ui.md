@@ -15,7 +15,8 @@ Implement extension chat UI with input (500 char limit, auto-focus, Enter to sen
 - [ ] Inline citations (page titles for web, video titles for YouTube, clickable URLs)
 - [ ] Auto-scroll to latest message
 - [ ] "Clear History" button (100 conversation limit in browser storage)
-- [ ] Chat side-panel: 400px default width, click outside to close, no header/footer
+- [ ] Chat side-panel: 400px default width, no header/footer
+- [ ] Side-panel close is handled natively by Chrome (the Side Panel API does not support programmatic close-on-outside-click from extension code — no custom implementation required or attempted)
 - [ ] Backend unreachable state: disabled input, red circle error icon (24x24px) below input
 - [ ] Tooltip: "Backend offline", red background, white text, 8px border radius, above input, auto-hide 5s
 - [ ] No dark mode, no footer, no character counter for MVP

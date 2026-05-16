@@ -164,3 +164,31 @@ class ChromaDBClient:
         # Combine and deduplicate results
         combined = results_original + results_hyde
         return list(set(combined))
+
+    def get_sources(self) -> List[Dict[str, Any]]:
+        """Get all unique sources with metadata (URL, title, timestamp, chunk count)."""
+        if self.status != "healthy":
+            raise RuntimeError("ChromaDB not initialized")
+
+        # Get all documents from the vectorstore
+        # Use a broad search to get all documents
+        all_docs = self.vectorstore.get()
+        
+        # Group by URL to get unique sources
+        sources_map: Dict[str, Dict[str, Any]] = {}
+        
+        for i, metadata in enumerate(all_docs.get("metadatas", [])):
+            url = metadata.get("url", "")
+            if not url:
+                continue
+            
+            if url not in sources_map:
+                sources_map[url] = {
+                    "url": url,
+                    "title": metadata.get("title"),
+                    "timestamp": metadata.get("timestamp"),
+                    "chunk_count": 0,
+                }
+            sources_map[url]["chunk_count"] += 1
+        
+        return list(sources_map.values())

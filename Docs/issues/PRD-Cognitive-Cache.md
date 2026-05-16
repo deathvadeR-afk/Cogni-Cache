@@ -47,17 +47,23 @@ Build a 100% local, open-source "Cognitive Cache" system that:
 
 ### Extension UI/UX
 
-- Chat input: 500 character limit, auto-focus on panel open, auto-scroll to latest message
+- Chat input: 500 character limit, auto-focus on panel open, Enter to send, Shift+Enter for new lines
 - Error states: Red circle icon (24x24px) below input, white text on red background tooltip ("Backend offline"), visible on click, auto-hide after 5s
-- Side-panel: 400px default width, click outside to close, no header/footer for more chat space
+- Side-panel: 400px default width, no header/footer for more chat space
+- Side-panel close: Handled natively by Chrome — the Chrome Side Panel API does not expose a programmatic API for close-on-outside-click from extension code; no custom workaround will be implemented
 - Icon: Default browser icon, badge showing ingested source count
 - Context menu: Only on links/text selections, fixed Ctrl+Shift+S shortcut
 - Storage: Browser storage API (100 conversation limit, persist chat history)
 - Welcome screen: Include "Start Backend" button, no telemetry
 
+### Ingestion: Article vs YouTube
+
+- **Web articles:** Readability.js runs client-side in the extension to extract clean text from the DOM; the extracted text is POSTed to the backend as `source_type: "article"` with a `content` field.
+- **YouTube videos:** The extension extracts the video URL/ID from the DOM and POSTs it to the backend as `source_type: "youtube"` with no `content` field. The backend fetches the transcript server-side using the `youtube-transcript-api` Python library.
+
 ### FastAPI Backend
 
-- Endpoints: POST /api/v1/ingest (returns ingestion ID + status), POST /api/v1/query (full response with sources), GET /api/v1/health (detailed checks), GET /api/v1/sources (full metadata), GET /api/v1/tasks/{task_id} (task status)
+- Endpoints: POST /api/v1/ingest (accepts `source_type`, `url`, and optional `content`; returns ingestion ID + status), POST /api/v1/query (full response with sources), GET /api/v1/health (detailed checks), GET /api/v1/sources (full metadata), GET /api/v1/tasks/{task_id} (task status)
 - Background tasks: Async ingestion, persist task status/results to disk, daily cleanup at 00:00 UTC via APScheduler (30 rotated logs, JSON format, DEBUG level, separate cleanup.log)
 - Middleware: Request ID (X-Request-ID header), GZip compression, rate limiting (10 req/min), 30s timeout for /query
 - Error handling: Custom exception handlers, structured JSON error responses, DEBUG logging level
@@ -68,7 +74,7 @@ Build a 100% local, open-source "Cognitive Cache" system that:
 ## Testing Decisions
 
 - Test framework: pytest for FastAPI endpoints
-- Scope: Test external behavior (not implementation details) of /ingest, /query, /health, /sources endpoints
+- Scope: Test external behavior (not implementation details) of /ingest (both source types), /query, /health, /sources endpoints
 - Modules to test: FastAPI route handlers, LangGraph orchestration logic, ChromaDB integration
 - Prior art: Follow existing Python testing patterns in the repo (if any)
 
@@ -78,7 +84,7 @@ Build a 100% local, open-source "Cognitive Cache" system that:
 - Email ingestion, cloud backups, cross-device syncing
 - Standalone desktop application, mobile app
 - Dark mode, custom fonts/icons, telemetry, aria-labels for MVP
-- PDFs, local desktop files, real-time audio/video processing, emails, cloud backups, cross-device syncing, standalone desktop app, mobile app
+- Close-on-outside-click for the Side Panel (not supported by Chrome Side Panel API)
 
 ## Further Notes
 

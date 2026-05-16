@@ -8,10 +8,10 @@ Implement GET /api/v1/sources endpoint that returns full metadata for all ingest
 
 ## Acceptance criteria
 
-- [ ] GET /api/v1/sources returns full metadata (URL, title, timestamp, chunk count)
-- [ ] Endpoint uses dependency injection for ChromaDB client
-- [ ] Pydantic response model defined
-- [ ] pytest tests for /api/v1/sources endpoint
+- [x] GET /api/v1/sources returns full metadata (URL, title, timestamp, chunk count)
+- [x] Endpoint uses dependency injection for ChromaDB client
+- [x] Pydantic response model defined
+- [x] pytest tests for /api/v1/sources endpoint
 
 ## Blocked by
 
