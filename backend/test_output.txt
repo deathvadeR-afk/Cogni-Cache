@@ -1,0 +1,12 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.11, pytest-8.3.4, pluggy-1.6.0 -- E:\Codecademy\Cognitive-Cache\backend\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: e:\Codecademy\Cognitive-Cache\backend
+configfile: pyproject.toml
+plugins: anyio-4.13.0, langsmith-0.8.5, asyncio-0.25.3
+asyncio: mode=Mode.STRICT, asyncio_default_fixture_loop_scope=function
+collecting ... ERROR: file or directory not found: ;
+
+collected 0 items
+
+============================ no tests ran in 0.16s ============================

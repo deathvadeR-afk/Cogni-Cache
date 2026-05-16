@@ -1,0 +1,15 @@
+{
+  "task_id": "98e272a3-619d-4138-949f-e194bce98432",
+  "status": "completed",
+  "source_type": "article",
+  "url": "https://test.example.com/task-test",
+  "content": "Test content for task status test.",
+  "created_at": "2026-05-16T11:55:59.860116+00:00",
+  "completed_at": "2026-05-16T11:56:00.290778+00:00",
+  "result": {
+    "chunks_added": 1,
+    "source_type": "article",
+    "url": "https://test.example.com/task-test"
+  },
+  "error": null
+}

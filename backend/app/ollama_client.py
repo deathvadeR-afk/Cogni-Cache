@@ -125,7 +125,7 @@ class OllamaClient:
             response = self._session.post(
                 f"{self.base_url}/api/generate",
                 json=payload,
-                timeout=60
+                timeout=600  # 10 minutes timeout for response generation
             )
             response.raise_for_status()
             return response.json().get("response", "")
@@ -133,7 +133,7 @@ class OllamaClient:
             logger.error(f"Error generating response: {e}")
             raise
 
-    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.7) -> str:
+    def chat(self, messages: List[Dict[str, str]], temperature: float = 0.2)-> str:
         """
         Chat with the Ollama model using message history.
 
@@ -160,10 +160,11 @@ class OllamaClient:
             response = self._session.post(
                 f"{self.base_url}/api/chat",
                 json=payload,
-                timeout=60
+                timeout=600  # 10 minutes timeout for chat response
             )
             response.raise_for_status()
             return response.json().get("message", {}).get("content", "")
         except requests.RequestException as e:
             logger.error(f"Error in chat: {e}")
             raise
+

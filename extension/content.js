@@ -16,9 +16,16 @@ function isArticlePage() {
         if (document.querySelector(selector)) return true;
     }
 
-    // Check for sufficient text content
-    const textLength = document.body.innerText.length;
-    return textLength > 500;
+    // Check for sufficient text content (more lenient threshold)
+    // Use a try-catch in case innerText is not available
+    try {
+        const textLength = document.body.innerText.length;
+        console.log('isArticlePage: textLength =', textLength);
+        return textLength > 200;
+    } catch (e) {
+        console.log('isArticlePage: error checking text length:', e);
+        return false;
+    }
 }
 
 function isYouTubeVideo() {
@@ -28,8 +35,7 @@ function isYouTubeVideo() {
 
 // Extract page content using Readability
 function extractArticleContent() {
-    const documentClone = document.cloneNode(true);
-    const reader = new Readability(documentClone);
+    const reader = new Readability(document);
     const article = reader.parse();
 
     return {
@@ -67,49 +73,66 @@ async function sendToBackend(data) {
 
 // Handle messages from service worker or side panel
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === 'getPageInfo') {
-        sendResponse({
-            isArticle: isArticlePage(),
-            isYouTube: isYouTubeVideo(),
-            url: window.location.href
-        });
-    } else if (request.action === 'saveContext') {
-        if (isYouTubeVideo()) {
-            const videoId = getYouTubeVideoId();
+    try {
+        if (request.action === 'getPageInfo') {
+            // Always return true for synchronous response
+            const result = {
+                isArticle: isArticlePage(),
+                isYouTube: isYouTubeVideo(),
+                url: window.location.href
+            };
+            console.log('getPageInfo response:', result);
+            sendResponse(result);
+            return true;
+        } else if (request.action === 'saveContext') {
+            if (isYouTubeVideo()) {
+                const videoId = getYouTubeVideoId();
+                sendToBackend({
+                    source_type: 'youtube',
+                    url: window.location.href
+                }).then(result => {
+                    sendResponse(result);
+                });
+            } else if (isArticlePage()) {
+                const content = extractArticleContent();
+                sendToBackend({
+                    source_type: 'article',
+                    url: content.url,
+                    content: content.content
+                }).then(result => {
+                    sendResponse(result);
+                });
+            } else {
+                // Allow saving any page as a web page
+                sendToBackend({
+                    source_type: 'web',
+                    url: window.location.href
+                }).then(result => {
+                    sendResponse(result);
+                });
+            }
+            return true;
+        } else if (request.action === 'saveLink') {
             sendToBackend({
-                source_type: 'youtube',
-                source_url: window.location.href
+                source_type: 'web',
+                url: request.url
             }).then(result => {
                 sendResponse(result);
             });
-        } else if (isArticlePage()) {
-            const content = extractArticleContent();
+            return true;
+        } else if (request.action === 'saveSelection') {
             sendToBackend({
-                source_type: 'article',
-                source_url: content.url,
-                content: content.content
+                source_type: 'text',
+                url: window.location.href,
+                content: request.text
             }).then(result => {
                 sendResponse(result);
             });
-        } else {
-            sendResponse({ success: false, error: 'Not a supported page type' });
+            return true;
         }
-        return true;
-    } else if (request.action === 'saveLink') {
-        sendToBackend({
-            source_type: 'web',
-            source_url: request.url
-        }).then(result => {
-            sendResponse(result);
-        });
-        return true;
-    } else if (request.action === 'saveSelection') {
-        sendToBackend({
-            source_type: 'text',
-            content: request.text
-        }).then(result => {
-            sendResponse(result);
-        });
+    } catch (error) {
+        console.error('Content script error:', error);
+        sendResponse({ success: false, error: error.message });
         return true;
     }
 });

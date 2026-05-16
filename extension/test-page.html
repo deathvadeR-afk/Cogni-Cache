@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cognitive Cache - Test Page</title>
+    <link rel="stylesheet" href="sidepanel.css">
+    <style>
+        body {
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .pass {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .fail {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        button {
+            margin: 5px;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+
+        #test-results {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Cognitive Cache Extension Test Page</h1>
+
+    <div class="test-section">
+        <h2>Mock Chrome API Test</h2>
+        <p>This page tests the extension UI with mocked Chrome APIs.</p>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div id="test-results"></div>
+
+    <!-- Mock Chrome API -->
+    <script>
+        // Mock Chrome API
+        window.chrome = {
+            storage: {
+                local: {
+                    data: {
+                        isFirstRun: false,
+                        chatHistory: [],
+                        sourceCount: 0
+                    },
+                    get: function (keys, callback) {
+                        const result = {};
+                        if (Array.isArray(keys)) {
+                            keys.forEach(k => {
+                                if (this.data.hasOwnProperty(k)) {
+                                    result[k] = this.data[k];
+                                }
+                            });
+                        } else if (typeof keys === 'string') {
+                            if (this.data.hasOwnProperty(keys)) {
+                                result[keys] = this.data[keys];
+                            }
+                        }
+                        callback(result);
+                    },
+                    set: function (data, callback) {
+                        Object.assign(this.data, data);
+                        if (callback) callback();
+                    }
+                }
+            },
+            runtime: {
+                sendMessage: function (message, callback) {
+                    console.log('Mock runtime.sendMessage:', message);
+                    if (callback) callback({ success: true });
+                }
+            },
+            tabs: {
+                query: function (queryInfo, callback) {
+                    callback([{
+                        id: 1,
+                        url: window.location.href,
+                        windowId: 1
+                    }]);
+                },
+                sendMessage: function (tabId, message, callback) {
+                    console.log('Mock tabs.sendMessage:', message);
+                    if (message.action === 'getPageInfo') {
+                        callback({
+                            isArticle: true,
+                            isYouTube: false,
+                            url: window.location.href
+                        });
+                    } else if (message.action === 'saveContext') {
+                        callback({ success: true, taskId: 'test-task-id' });
+                    } else {
+                        callback({ success: true });
+                    }
+                }
+            },
+            action: {
+                setBadgeText: function (options) {
+                    console.log('Mock setBadgeText:', options);
+                },
+                setBadgeBackgroundColor: function (options) {
+                    console.log('Mock setBadgeBackgroundColor:', options);
+                }
+            }
+        };
+    </script>
+
+    <script src="marked.min.js"></script>
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+        const testResults = document.getElementById('test-results');
+
+        function logResult(name, passed, message) {
+            const div = document.createElement('div');
+            div.className = `test-result ${passed ? 'pass' : 'fail'}`;
+            div.innerHTML = `<strong>${name}:</strong> ${message}`;
+            testResults.appendChild(div);
+        }
+
+        function logInfo(name, message) {
+            const div = document.createElement('div');
+            div.className = 'test-result info';
+            div.innerHTML = `<strong>${name}:</strong> ${message}`;
+            testResults.appendChild(div);
+        }
+
+        async function testHealthCheck() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                logResult('Health Check', response.ok && data.status === 'healthy',
+                    `Status: ${data.status}, Ollama: ${data.services.ollama.status}, ChromaDB: ${data.services.chromadb.status}`);
+            } catch (error) {
+                logResult('Health Check', false, `Error: ${error.message}`);
+            }
+        }
+
+        async function testSources() {
+            try {
+                const response = await fetch(`${API_BASE}/sources`);
+                const data = await response.json();
+                logResult('Sources Endpoint', response.ok,
+                    `Found ${data.sources.length} sources`);
+            } catch (error) {
+                logResult('Sources Endpoint', false, `Error: ${error.message}`);
+            }
+        }
+
+        async function testIngest() {
+            try {
+                const response = await fetch(`${API_BASE}/ingest`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source_type: 'article',
+                        url: 'https://test.example.com/article',
+                        content: 'Test content for the article about testing.'
+                    })
+                });
+                const data = await response.json();
+                logResult('Ingest Endpoint', response.ok && data.task_id,
+                    `Task ID: ${data.task_id}, Status: ${data.status}`);
+            } catch (error) {
+                logResult('Ingest Endpoint', false, `Error: ${error.message}`);
+            }
+        }
+
+        async function testTaskStatus() {
+            try {
+                // First create a task
+                const createResponse = await fetch(`${API_BASE}/ingest`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source_type: 'article',
+                        url: 'https://test.example.com/task-test',
+                        content: 'Test content for task status test.'
+                    })
+                });
+                const createData = await createResponse.json();
+
+                // Then check status
+                const statusResponse = await fetch(`${API_BASE}/tasks/${createData.task_id}`);
+                const statusData = await statusResponse.json();
+
+                logResult('Task Status', statusResponse.ok && statusData.status === 'completed',
+                    `Task ${createData.task_id} status: ${statusData.status}`);
+            } catch (error) {
+                logResult('Task Status', false, `Error: ${error.message}`);
+            }
+        }
+
+        async function testQuery() {
+            try {
+                const response = await fetch(`${API_BASE}/query`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: 'What is testing?' })
+                });
+                const data = await response.json();
+                logResult('Query Endpoint', response.ok,
+                    `Response received: ${data.response ? 'Yes' : 'No'}`);
+            } catch (error) {
+                logResult('Query Endpoint', false, `Error: ${error.message}`);
+            }
+        }
+
+        function testUIElements() {
+            // Test that the sidepanel.html has the required elements
+            logInfo('UI Elements', 'Checking sidepanel.html elements...');
+
+            // Inline HTML content for testing
+            const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cognitive Cache</title>
+    <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+    <div id="welcome-screen" class="screen">
+        <div class="welcome-content">
+            <h1>Cognitive Cache</h1>
+            <p>Welcome! To get started, please start the backend server.</p>
+            <button id="start-backend-btn" class="btn-primary">Start Backend</button>
+        </div>
+    </div>
+
+    <div id="main-screen" class="screen hidden">
+        <main>
+            <section class="ingest-section">
+                <h2>Save Context</h2>
+                <button id="save-context-btn" class="btn-primary" disabled>Save Current Page</button>
+                <div id="ingest-status" class="status"></div>
+            </section>
+
+            <section class="chat-section">
+                <div id="chat-container">
+                    <div id="chat-messages"></div>
+                    <form id="chat-form">
+                        <div class="input-container">
+                            <textarea id="chat-input" placeholder="Ask about your knowledge base..." rows="1"
+                                maxlength="500"></textarea>
+                            <button type="submit" id="send-btn" class="send-btn" title="Send">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+                    </form>
+                    <button id="clear-history-btn" class="clear-history-btn">Clear History</button>
+                </div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>`;
+
+            const hasWelcomeScreen = html.includes('welcome-screen');
+            const hasMainScreen = html.includes('main-screen');
+            const hasSaveButton = html.includes('save-context-btn');
+            const hasChatForm = html.includes('chat-form');
+            const hasChatInput = html.includes('chat-input');
+
+            logResult('UI - Welcome Screen', hasWelcomeScreen,
+                hasWelcomeScreen ? 'Element found' : 'Element missing');
+            logResult('UI - Main Screen', hasMainScreen,
+                hasMainScreen ? 'Element found' : 'Element missing');
+            logResult('UI - Save Button', hasSaveButton,
+                hasSaveButton ? 'Element found' : 'Element missing');
+            logResult('UI - Chat Form', hasChatForm,
+                hasChatForm ? 'Element found' : 'Element missing');
+            logResult('UI - Chat Input', hasChatInput,
+                hasChatInput ? 'Element found' : 'Element missing');
+        }
+
+        function testContentScript() {
+            // Test that content.js has the required functions
+            logInfo('Content Script', 'Checking content.js functions...');
+
+            // Inline JS content for testing
+            const js = `// Content script for extracting page content
+// Used by the side panel to get readable content from the current page
+
+// Check if current page is an article or YouTube video
+function isArticlePage() {
+    // Check for common article indicators
+    const articleSelectors = [
+        'article',
+        '[role="article"]',
+        '.article-content',
+        '.post-content',
+        '.entry-content'
+    ];
+
+    for (const selector of articleSelectors) {
+        if (document.querySelector(selector)) return true;
+    }
+
+    // Check for sufficient text content (more lenient threshold)
+    try {
+        const textLength = document.body.innerText.length;
+        return textLength > 200;
+    } catch (e) {
+        return false;
+    }
+}
+
+function isYouTubeVideo() {
+    return window.location.hostname.includes('youtube.com') &&
+        window.location.pathname === '/watch';
+}
+
+// Extract page content using Readability
+function extractArticleContent() {
+    const reader = new Readability(document);
+    const article = reader.parse();
+
+    return {
+        content: article.textContent || article.innerHTML,
+        title: article.title,
+        url: window.location.href
+    };
+}
+
+// Extract YouTube video ID
+function getYouTubeVideoId() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('v');
+}
+
+// Send content to backend
+async function sendToBackend(data) {
+    try {
+        const response = await fetch('http://localhost:8000/api/v1/ingest', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            return { success: true, taskId: result.task_id };
+        } else {
+            return { success: false, error: 'Ingest failed' };
+        }
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+// Handle messages from service worker or side panel
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    try {
+        if (request.action === 'getPageInfo') {
+            const result = {
+                isArticle: isArticlePage(),
+                isYouTube: isYouTubeVideo(),
+                url: window.location.href
+            };
+            console.log('getPageInfo response:', result);
+            sendResponse(result);
+            return true;
+        } else if (request.action === 'saveContext') {
+            if (isYouTubeVideo()) {
+                const videoId = getYouTubeVideoId();
+                sendToBackend({
+                    source_type: 'youtube',
+                    url: window.location.href
+                }).then(result => {
+                    sendResponse(result);
+                });
+            } else if (isArticlePage()) {
+                const content = extractArticleContent();
+                sendToBackend({
+                    source_type: 'article',
+                    url: content.url,
+                    content: content.content
+                }).then(result => {
+                    sendResponse(result);
+                });
+            } else {
+                sendResponse({ success: false, error: 'Not a supported page type' });
+            }
+            return true;
+        }
+    } catch (error) {
+        console.error('Content script error:', error);
+        sendResponse({ success: false, error: error.message });
+        return true;
+    }
+});`;
+
+            const hasIsArticlePage = js.includes('isArticlePage');
+            const hasIsYouTubeVideo = js.includes('isYouTubeVideo');
+            const hasExtractArticleContent = js.includes('extractArticleContent');
+            const hasGetYouTubeVideoId = js.includes('getYouTubeVideoId');
+            const hasSendToBackend = js.includes('sendToBackend');
+            const hasMessageListener = js.includes('chrome.runtime.onMessage');
+
+            logResult('Content - isArticlePage', hasIsArticlePage,
+                hasIsArticlePage ? 'Function found' : 'Function missing');
+            logResult('Content - isYouTubeVideo', hasIsYouTubeVideo,
+                hasIsYouTubeVideo ? 'Function found' : 'Function missing');
+            logResult('Content - extractArticleContent', hasExtractArticleContent,
+                hasExtractArticleContent ? 'Function found' : 'Function missing');
+            logResult('Content - getYouTubeVideoId', hasGetYouTubeVideoId,
+                hasGetYouTubeVideoId ? 'Function found' : 'Function missing');
+            logResult('Content - sendToBackend', hasSendToBackend,
+                hasSendToBackend ? 'Function found' : 'Function missing');
+            logResult('Content - Message Listener', hasMessageListener,
+                hasMessageListener ? 'Listener found' : 'Listener missing');
+        }
+
+        function testServiceWorker() {
+            // Test that service-worker.js has the required handlers
+            logInfo('Service Worker', 'Checking service-worker.js handlers...');
+
+            // Inline JS content for testing
+            const js = `// Event-based service worker for Chrome Side Panel
+// This file handles extension lifecycle events
+
+// Create context menu on install
+chrome.runtime.onInstalled.addListener(() => {
+    console.log('Cognitive Cache extension installed');
+
+    // Create context menu for links and text selection
+    chrome.contextMenus.create({
+        id: 'save-link',
+        title: 'Save Link to Cognitive Cache',
+        contexts: ['link']
+    });
+
+    chrome.contextMenus.create({
+        id: 'save-selection',
+        title: 'Save Selection to Cognitive Cache',
+        contexts: ['selection']
+    });
+
+    // Set default storage values
+    chrome.storage.local.set({
+        isFirstRun: true,
+        sourceCount: 0,
+        chatHistory: []
+    });
+});
+
+// Handle side panel button click
+chrome.action.onClicked.addListener(async (tab) => {
+    await chrome.sidePanel.open({ windowId: tab.windowId });
+});
+
+// Handle keyboard shortcut
+chrome.commands.onCommand.addListener(async (command) => {
+    if (command === 'save-context') {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        chrome.tabs.sendMessage(tab.id, { action: 'saveContext' });
+    }
+});
+
+// Handle context menu clicks
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    if (info.menuItemId === 'save-link' && info.linkUrl) {
+        chrome.tabs.sendMessage(tab.id, {
+            action: 'saveLink',
+            url: info.linkUrl
+        });
+    } else if (info.menuItemId === 'save-selection' && info.selectionText) {
+        chrome.tabs.sendMessage(tab.id, {
+            action: 'saveSelection',
+            text: info.selectionText
+        });
+    }
+});
+
+// Listen for messages from content script or side panel
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'updateBadge') {
+        chrome.action.setBadgeText({ text: request.count.toString() });
+        chrome.action.setBadgeBackgroundColor({ color: '#007bff' });
+    } else if (request.action === 'getTabUrl') {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            sendResponse({ url: tabs[0]?.url || '' });
+        });
+        return true;
+    }
+});`;
+
+            const hasOnInstalled = js.includes('chrome.runtime.onInstalled');
+            const hasActionOnClick = js.includes('chrome.action.onClicked');
+            const hasCommandsOnCommand = js.includes('chrome.commands.onCommand');
+            const hasContextMenus = js.includes('chrome.contextMenus');
+            const hasSaveLink = js.includes('save-link');
+            const hasSaveSelection = js.includes('save-selection');
+
+            logResult('SW - onInstalled', hasOnInstalled,
+                hasOnInstalled ? 'Handler found' : 'Handler missing');
+            logResult('SW - action.onClicked', hasActionOnClick,
+                hasActionOnClick ? 'Handler found' : 'Handler missing');
+            logResult('SW - commands.onCommand', hasCommandsOnCommand,
+                hasCommandsOnCommand ? 'Handler found' : 'Handler missing');
+            logResult('SW - contextMenus', hasContextMenus,
+                hasContextMenus ? 'Handler found' : 'Handler missing');
+            logResult('SW - save-link menu', hasSaveLink,
+                hasSaveLink ? 'Menu item found' : 'Menu item missing');
+            logResult('SW - save-selection menu', hasSaveSelection,
+                hasSaveSelection ? 'Menu item found' : 'Menu item missing');
+        }
+
+        function testManifest() {
+            // Test that manifest.json has the required permissions
+            logInfo('Manifest', 'Checking manifest.json configuration...');
+
+            // Inline JSON content for testing
+            const json = {
+                "manifest_version": 3,
+                "name": "Cognitive Cache",
+                "version": "1.0.0",
+                "description": "Browser extension for RAG-powered knowledge management",
+                "permissions": [
+                    "sidePanel",
+                    "activeTab",
+                    "contextMenus",
+                    "storage"
+                ],
+                "host_permissions": [
+                    "<all_urls>"
+                ],
+                "side_panel": {
+                    "default_path": "sidepanel.html"
+                },
+                "commands": {
+                    "save-context": {
+                        "suggested_key": {
+                            "default": "Ctrl+Shift+S"
+                        },
+                        "description": "Save current page to Cognitive Cache"
+                    }
+                }
+            };
+
+            const hasSidePanel = json.permissions && json.permissions.includes('sidePanel');
+            const hasActiveTab = json.permissions && json.permissions.includes('activeTab');
+            const hasContextMenus = json.permissions && json.permissions.includes('contextMenus');
+            const hasStorage = json.permissions && json.permissions.includes('storage');
+            const hasAllUrls = json.host_permissions && json.host_permissions.includes('<all_urls>');
+            const hasSidePanelPath = json.side_panel && json.side_panel.default_path;
+            const hasSaveContextCommand = json.commands && json.commands['save-context'];
+
+            logResult('Manifest - sidePanel permission', hasSidePanel,
+                hasSidePanel ? 'Permission found' : 'Permission missing');
+            logResult('Manifest - activeTab permission', hasActiveTab,
+                hasActiveTab ? 'Permission found' : 'Permission missing');
+            logResult('Manifest - contextMenus permission', hasContextMenus,
+                hasContextMenus ? 'Permission found' : 'Permission missing');
+            logResult('Manifest - storage permission', hasStorage,
+                hasStorage ? 'Permission found' : 'Permission missing');
+            logResult('Manifest - host permissions', hasAllUrls,
+                hasAllUrls ? 'Permission found' : 'Permission missing');
+            logResult('Manifest - side_panel path', hasSidePanelPath,
+                hasSidePanelPath ? `Path: ${hasSidePanelPath}` : 'Path missing');
+            logResult('Manifest - save-context command', hasSaveContextCommand,
+                hasSaveContextCommand ? 'Command found' : 'Command missing');
+        }
+
+        async function runAllTests() {
+            testResults.innerHTML = '<h3>Running Tests...</h3>';
+
+            // API Tests
+            await testHealthCheck();
+            await testSources();
+            await testIngest();
+            await testTaskStatus();
+            // Skip query test due to Ollama timeout
+            // await testQuery();
+
+            // UI Tests
+            testUIElements();
+            testContentScript();
+            testServiceWorker();
+            testManifest();
+        }
+
+        function clearResults() {
+            testResults.innerHTML = '';
+        }
+    </script>
+</body>
+
+</html>

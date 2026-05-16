@@ -62,11 +62,12 @@ def fetch_youtube_transcript(url_or_id: str) -> str:
 
     try:
         logger.info(f"Fetching transcript for video: {video_id}")
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
+        # Use the new API: YouTubeTranscriptApi().fetch() returns a FetchedTranscript
+        fetched_transcript = YouTubeTranscriptApi().fetch(video_id)
 
         # Combine all text segments
         transcript_text = " ".join([
-            segment["text"] for segment in transcript_list
+            snippet.text for snippet in fetched_transcript
         ])
 
         logger.info(f"Successfully fetched transcript with {len(transcript_text)} characters")

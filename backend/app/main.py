@@ -150,23 +150,24 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 app.add_middleware(RequestSizeLimitMiddleware)
 
 # Add timeout middleware for /api/v1/query endpoint
-app.add_middleware(TimeoutMiddleware, timeout_seconds=30)
+app.add_middleware(TimeoutMiddleware, timeout_seconds=600)
 
 # Health endpoint
 @app.get("/api/v1/health", response_model=HealthResponse)
 @limiter.limit("10/minute")
-async def health_check(
-    request: Request,
-    chromadb_client = Depends(get_db_client),
-    ollama_client = Depends(get_ollama_client_dep),
-):
+async def health_check(request: Request):
     """Health check endpoint with detailed service status."""
+    # Use app state clients (already initialized during lifespan)
+    # This avoids blocking on client initialization during health check
+    chromadb_client = request.app.state.chromadb_client
+    ollama_client = request.app.state.ollama_client
+    
     return HealthResponse(
         status="healthy",
         version="0.1.0",
         services={
-            "ollama": ollama_client.get_status(),
-            "chromadb": chromadb_client.get_status(),
+            "ollama": ollama_client.get_status() if ollama_client else {"status": "not_initialized"},
+            "chromadb": chromadb_client.get_status() if chromadb_client else {"status": "not_initialized"},
         },
         request_id=request.state.request_id,
     )
@@ -241,11 +242,12 @@ async def get_task(
 # Sources endpoint
 @app.get("/api/v1/sources", response_model=SourcesResponse)
 @limiter.limit("10/minute")
-async def get_sources(
-    request: Request,
-    chromadb_client = Depends(get_db_client),
-):
+async def get_sources(request: Request):
     """Get all ingested sources with metadata."""
+    chromadb_client = request.app.state.chromadb_client
+    if not chromadb_client:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=503, detail="ChromaDB client not initialized")
     sources = chromadb_client.get_sources()
     return SourcesResponse(sources=sources)
 

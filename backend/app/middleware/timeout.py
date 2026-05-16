@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class TimeoutMiddleware(BaseHTTPMiddleware):
     """Middleware to enforce timeout on specific endpoints."""
     
-    def __init__(self, app, timeout_seconds: int = 30):
+    def __init__(self, app, timeout_seconds: int = 600):
         super().__init__(app)
         self.timeout_seconds = timeout_seconds
         self.target_path = "/api/v1/query"

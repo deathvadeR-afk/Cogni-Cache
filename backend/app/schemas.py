@@ -26,6 +26,8 @@ class SourceType(str, Enum):
     """Source type for ingestion."""
     article = "article"
     youtube = "youtube"
+    web = "web"
+    text = "text"
 
 class IngestRequest(BaseModel):
     """Request schema for ingest endpoint."""

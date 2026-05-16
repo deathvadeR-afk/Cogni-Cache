@@ -1,0 +1,15 @@
+{
+  "task_id": "c18986cc-f75c-44bc-8203-eb02ca39f931",
+  "status": "completed",
+  "source_type": "article",
+  "url": "https://example.com/test",
+  "content": "This is a test article about artificial intelligence and machine learning.",
+  "created_at": "2026-05-16T11:51:40.185983+00:00",
+  "completed_at": "2026-05-16T11:51:43.110938+00:00",
+  "result": {
+    "chunks_added": 1,
+    "source_type": "article",
+    "url": "https://example.com/test"
+  },
+  "error": null
+}

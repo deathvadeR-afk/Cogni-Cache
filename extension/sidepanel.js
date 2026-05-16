@@ -51,14 +51,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            const response = await chrome.tabs.sendMessage(tab.id, { action: 'saveContext' });
 
-            if (response && response.success) {
-                ingestStatus.textContent = 'Saved successfully!';
-                ingestStatus.className = 'status success';
-                updateSourceCount();
-            } else {
-                throw new Error(response?.error || 'Save failed');
+            // Try to use content script first
+            try {
+                const response = await chrome.tabs.sendMessage(tab.id, { action: 'saveContext' });
+
+                if (response && response.success) {
+                    ingestStatus.textContent = 'Saved successfully!';
+                    ingestStatus.className = 'status success';
+                    updateSourceCount();
+                } else {
+                    throw new Error(response?.error || 'Save failed');
+                }
+            } catch (contentScriptError) {
+                // Fallback: save as web page directly if content script isn't available
+                console.log('Content script not available, using fallback:', contentScriptError);
+                const response = await fetch(`${API_BASE}/ingest`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        source_type: 'web',
+                        url: tab.url
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    ingestStatus.textContent = 'Saved successfully!';
+                    ingestStatus.className = 'status success';
+                    updateSourceCount();
+                } else {
+                    throw new Error('Save failed');
+                }
             }
         } catch (error) {
             ingestStatus.textContent = 'Error: ' + error.message;
@@ -132,19 +156,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Check page type and enable/disable save button
     async function checkPageType() {
-        try {
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-            const response = await chrome.tabs.sendMessage(tab.id, { action: 'getPageInfo' });
+        let attempts = 0;
+        const maxAttempts = 3;
 
-            if (response && (response.isArticle || response.isYouTube)) {
-                saveContextBtn.disabled = false;
-                saveContextBtn.textContent = response.isYouTube ? 'Save YouTube Video' : 'Save Article';
-            } else {
-                saveContextBtn.disabled = true;
-                saveContextBtn.textContent = 'Save Current Page';
+        while (attempts < maxAttempts) {
+            try {
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                const response = await chrome.tabs.sendMessage(tab.id, { action: 'getPageInfo' });
+
+                if (response && (response.isArticle || response.isYouTube)) {
+                    saveContextBtn.disabled = false;
+                    saveContextBtn.textContent = response.isYouTube ? 'Save YouTube Video' : 'Save Article';
+                } else {
+                    // Enable save button for all pages (will save as web page)
+                    saveContextBtn.disabled = false;
+                    saveContextBtn.textContent = 'Save Current Page';
+                }
+                return; // Success, exit the function
+            } catch (error) {
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    console.error('checkPageType: failed after', maxAttempts, 'attempts:', error);
+                    // Enable save button even on error (will save as web page)
+                    saveContextBtn.disabled = false;
+                    saveContextBtn.textContent = 'Save Current Page';
+                } else {
+                    // Wait before retrying
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
             }
-        } catch (error) {
-            saveContextBtn.disabled = true;
         }
     }
 
